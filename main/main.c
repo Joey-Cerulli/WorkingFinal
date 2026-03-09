@@ -15,6 +15,8 @@
 #include "nvs_flash.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "hd44780.h"
+#include <esp_idf_lib_helpers.h>
 
 #include "esp_bt.h"
 #include "bt_app_core.h"
@@ -23,10 +25,32 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
-#include "esp_avrc_api.h"
+#include "esp_avrc_api.h"\
+
+
+#define next GPIO_NUM_32           //Next button pin
+#define prev GPIO_NUM_23           //Previous button pin
+#define play GPIO_NUM_21           //Play/Pause button pin
+#define leftVol ADC_CHANNEL_4      //Left Volume adjusting potentiometer pin
+#define rightVol ADC_CHANNEL_5     //Right volume adjusting potentiometer pin
+#define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
+#define BITWIDTH ADC_BITWIDTH_12   //ADC Bitwidth
 
 /* device name */
 static const char local_device_name[] = "BC SPECIALS";
+
+// static const uint8_t char_data[] =
+// {
+//     0x00, 0x04, 0x06, 0x05, 0x05, 0x0D, 0x1D, 0x00,
+//     0x00, 0x0A, 0x00, 0x0E, 0x0A, 0x0A, 0x0E, 0x00
+// };
+
+const char mesg1[] = "hey yall look at me im scrolling wooooooooo look at me go yayyy     ";
+const char mesg2[] = "hey yall its me again look at us yayyyyy yipee wahoooo     ";
+
+typedef enum {INIT, PL_WAIT, NX_WAIT, PLAY, NEXT} State_t;
+
+volatile bool songPlaying = false;
 
 /* event for stack up */
 enum {
@@ -47,6 +71,139 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 /*******************************
  * STATIC FUNCTION DEFINITIONS
  ******************************/
+/*
+void lcd(void *pvParameters){
+    static hd44780_t lcd =
+    {
+        .write_cb = NULL,
+        .font = HD44780_FONT_5X8,
+        .lines = 2,
+        .pins = {
+            .rs = GPIO_NUM_2,
+            .e  = GPIO_NUM_4,
+            .d4 = GPIO_NUM_16,
+            .d5 = GPIO_NUM_17,
+            .d6 = GPIO_NUM_18,
+            .d7 = GPIO_NUM_19,
+            .bl = HD44780_NOT_USED
+        }
+    };
+    hd44780_init(&lcd);
+
+    gpio_config_t io_conf = {
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask =
+            (1ULL << lcd.pins.rs) |
+            (1ULL << lcd.pins.e)  |
+            (1ULL << lcd.pins.d4) |
+            (1ULL << lcd.pins.d5) |
+            (1ULL << lcd.pins.d6) |
+            (1ULL << lcd.pins.d7),
+    };
+    gpio_config(&io_conf); 
+
+    vTaskDelay(50/portTICK_PERIOD_MS);
+    ESP_ERROR_CHECK(hd44780_init(&lcd));
+   
+    hd44780_upload_character(&lcd, 3, char_data);
+    hd44780_upload_character(&lcd, 4, char_data + 8);
+
+    hd44780_clear(&lcd);
+
+    while (1)
+    {
+        static uint8_t pos1;
+        static uint8_t pos2;
+        hd44780_gotoxy(&lcd, 0, 0);
+        hd44780_putc(&lcd, 3);
+        hd44780_gotoxy(&lcd, 1, 0);
+        for (uint8_t i = 0; i < 15; i++) {
+            char c = mesg1[(pos1 + i) % (sizeof(mesg1) - 1)];
+            hd44780_putc(&lcd, c);
+        }
+        pos1 = (pos1 + 1) % (sizeof(mesg1) - 1);
+           
+        hd44780_gotoxy(&lcd, 0, 1);
+        hd44780_putc(&lcd, 4);
+        hd44780_gotoxy(&lcd, 1, 1);
+        for (uint8_t i = 0; i < 15; i++) {
+            char c = mesg2[(pos2 + i) % (sizeof(mesg2) - 1)];
+            hd44780_putc(&lcd, c);
+        }
+        pos2 = (pos2 + 1) % (sizeof(mesg2) - 1);
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+}
+*/
+
+
+void buttonHandler(){
+    State_t state = INIT;
+    songPlaying = true;
+    bool playPressed = false;
+    //bool prevPressed = false;
+    bool nextPressed = false;
+    for(;;){
+        vTaskDelay(10/portTICK_PERIOD_MS);
+        switch(state){
+        case INIT:
+            //counter = 0;
+            if (gpio_get_level(play) == 1){
+                playPressed = true;
+                state = PL_WAIT;
+            }
+            else if (gpio_get_level(next) == 1){
+                nextPressed = true;
+                state = NX_WAIT;
+            }
+            break;
+        case PL_WAIT:
+            if (gpio_get_level(play) == 0 && playPressed){
+                playPressed = false;
+                state = PLAY;
+            }
+            break;
+        case NX_WAIT:
+            if (gpio_get_level(next) == 0 && nextPressed){
+                nextPressed = false;
+                state = NEXT;
+            }
+            break; 
+        case PLAY:
+            if (songPlaying){
+                esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
+            }
+            else {
+                esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_PRESSED);
+            }
+            songPlaying = !songPlaying;
+            state = INIT;
+            break;
+        case NEXT:
+            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+            state = INIT;
+            break;
+        }
+
+    }
+}
+
+void config(){
+    gpio_reset_pin(prev);
+    gpio_set_direction(prev, GPIO_MODE_INPUT);
+    gpio_pulldown_en(prev);
+
+    gpio_reset_pin(play);
+    gpio_set_direction(play, GPIO_MODE_INPUT);
+    gpio_pulldown_en(play);
+
+    gpio_reset_pin(next);
+    gpio_set_direction(next, GPIO_MODE_INPUT);
+    gpio_pulldown_en(next);
+
+    gpio_pulldown_en(CONFIG_EXAMPLE_I2S_DATA_PIN);
+}
+
 static char *bda2str(uint8_t * bda, char *str, size_t size)
 {
     if (bda == NULL || str == NULL || size < 18) {
@@ -203,6 +360,9 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 
 void app_main(void)
 {
+    config();
+    xTaskCreate(buttonHandler, "ButtonHandler", configMINIMAL_STACK_SIZE*3, NULL, 5, NULL);
+
     char bda_str[18] = {0};
     /* initialize NVS — it is used to store PHY calibration data */
     esp_err_t err = nvs_flash_init();
