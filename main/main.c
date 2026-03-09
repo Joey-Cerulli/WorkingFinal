@@ -71,7 +71,7 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 /*******************************
  * STATIC FUNCTION DEFINITIONS
  ******************************/
-/*
+
 void lcd(void *pvParameters){
     static hd44780_t lcd =
     {
@@ -79,31 +79,19 @@ void lcd(void *pvParameters){
         .font = HD44780_FONT_5X8,
         .lines = 2,
         .pins = {
-            .rs = GPIO_NUM_2,
-            .e  = GPIO_NUM_4,
-            .d4 = GPIO_NUM_16,
+            .rs = GPIO_NUM_19,
+            .e  = GPIO_NUM_18,
+            .d4 = GPIO_NUM_5,
             .d5 = GPIO_NUM_17,
-            .d6 = GPIO_NUM_18,
-            .d7 = GPIO_NUM_19,
+            .d6 = GPIO_NUM_16,
+            .d7 = GPIO_NUM_4,
             .bl = HD44780_NOT_USED
         }
     };
-    hd44780_init(&lcd);
-
-    gpio_config_t io_conf = {
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask =
-            (1ULL << lcd.pins.rs) |
-            (1ULL << lcd.pins.e)  |
-            (1ULL << lcd.pins.d4) |
-            (1ULL << lcd.pins.d5) |
-            (1ULL << lcd.pins.d6) |
-            (1ULL << lcd.pins.d7),
-    };
-    gpio_config(&io_conf); 
 
     vTaskDelay(50/portTICK_PERIOD_MS);
-    ESP_ERROR_CHECK(hd44780_init(&lcd));
+    //ESP_ERROR_CHECK(hd44780_init(&lcd));
+    hd44780_init(&lcd);
    
     hd44780_upload_character(&lcd, 3, char_data);
     hd44780_upload_character(&lcd, 4, char_data + 8);
@@ -131,23 +119,21 @@ void lcd(void *pvParameters){
             hd44780_putc(&lcd, c);
         }
         pos2 = (pos2 + 1) % (sizeof(mesg2) - 1);
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
-*/
+
 
 
 void buttonHandler(){
     State_t state = INIT;
     songPlaying = true;
     bool playPressed = false;
-    //bool prevPressed = false;
     bool nextPressed = false;
     for(;;){
         vTaskDelay(10/portTICK_PERIOD_MS);
         switch(state){
         case INIT:
-            //counter = 0;
             if (gpio_get_level(play) == 1){
                 playPressed = true;
                 state = PL_WAIT;
@@ -361,7 +347,8 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 void app_main(void)
 {
     config();
-    xTaskCreate(buttonHandler, "ButtonHandler", configMINIMAL_STACK_SIZE*3, NULL, 5, NULL);
+    xTaskCreate(lcd, "LCDmessages", configMINIMAL_STACK_SIZE * 3, NULL, 3, NULL);
+    xTaskCreate(buttonHandler, "ButtonHandler", configMINIMAL_STACK_SIZE * 3, NULL, 4, NULL);
 
     char bda_str[18] = {0};
     /* initialize NVS — it is used to store PHY calibration data */
