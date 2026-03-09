@@ -29,8 +29,7 @@
 
 
 #define next GPIO_NUM_32           //Next button pin
-#define prev GPIO_NUM_23           //Previous button pin
-#define play GPIO_NUM_21           //Play/Pause button pin
+#define play GPIO_NUM_13           //Play/Pause button pin
 #define leftVol ADC_CHANNEL_4      //Left Volume adjusting potentiometer pin
 #define rightVol ADC_CHANNEL_5     //Right volume adjusting potentiometer pin
 #define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
@@ -128,30 +127,30 @@ void lcd(void *pvParameters){
 void buttonHandler(){
     State_t state = INIT;
     songPlaying = true;
-    bool playPressed = false;
-    bool nextPressed = false;
+    //bool playPressed = false;
+    //bool nextPressed = false;
     for(;;){
         vTaskDelay(10/portTICK_PERIOD_MS);
         switch(state){
         case INIT:
             if (gpio_get_level(play) == 1){
-                playPressed = true;
+                //playPressed = true;
                 state = PL_WAIT;
             }
             else if (gpio_get_level(next) == 1){
-                nextPressed = true;
+                //nextPressed = true;
                 state = NX_WAIT;
             }
             break;
         case PL_WAIT:
-            if (gpio_get_level(play) == 0 && playPressed){
-                playPressed = false;
+            if (gpio_get_level(play) == 0 ){
+                //playPressed = false;
                 state = PLAY;
             }
             break;
         case NX_WAIT:
-            if (gpio_get_level(next) == 0 && nextPressed){
-                nextPressed = false;
+            if (gpio_get_level(next) == 0 ){
+                //nextPressed = false;
                 state = NEXT;
             }
             break; 
@@ -175,10 +174,6 @@ void buttonHandler(){
 }
 
 void config(){
-    gpio_reset_pin(prev);
-    gpio_set_direction(prev, GPIO_MODE_INPUT);
-    gpio_pulldown_en(prev);
-
     gpio_reset_pin(play);
     gpio_set_direction(play, GPIO_MODE_INPUT);
     gpio_pulldown_en(play);
