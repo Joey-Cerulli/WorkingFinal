@@ -103,8 +103,8 @@ void lcd(void *pvParameters){
         static uint8_t pos2;
         hd44780_gotoxy(&lcd, 0, 0);
         hd44780_putc(&lcd, 3);
-        hd44780_gotoxy(&lcd, 1, 0);
-        for (uint8_t i = 0; i < 15; i++) {
+        hd44780_gotoxy(&lcd, 2, 0);
+        for (uint8_t i = 0; i < 14; i++) {
             char c = mesg1[(pos1 + i) % (sizeof(mesg1) - 1)];
             hd44780_putc(&lcd, c);
         }
@@ -112,13 +112,13 @@ void lcd(void *pvParameters){
            
         hd44780_gotoxy(&lcd, 0, 1);
         hd44780_putc(&lcd, 4);
-        hd44780_gotoxy(&lcd, 1, 1);
+        hd44780_gotoxy(&lcd, 2, 1);
         for (uint8_t i = 0; i < 15; i++) {
             char c = mesg2[(pos2 + i) % (sizeof(mesg2) - 1)];
             hd44780_putc(&lcd, c);
         }
         pos2 = (pos2 + 1) % (sizeof(mesg2) - 1);
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(400));
     }
 }
 
