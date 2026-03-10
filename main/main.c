@@ -186,19 +186,14 @@ void lcd(void *pvParameters){
         char titl[128];
         size_t newLen = trimArray(TITLE, titl, sizeof(titl), 5);
         if ((newLen - 5) >= 14 ){
-            for (uint8_t i = 0; i < 14; i++) {
+            for (int i = 0; i < 14; i++) {
                 char c = titl[(pos1 + i) % newLen];
                 hd44780_putc(&lcd, c);
             }
         }
         else{
-            newLen += 50;
-            for (uint8_t i = 0; i < newLen; i++) {
-                char c = titl[i];
-                hd44780_gotoxy(&lcd, i+2 ,0);
-                if (c == '\0'){
-                    c = ' ';
-                }
+            for (int i = 0; i < 14; i++) {
+                char c = (i < newLen) ? titl[i] : ' ';
                 hd44780_putc(&lcd, c);
             }
         }
@@ -218,13 +213,8 @@ void lcd(void *pvParameters){
             }
         }
         else{
-            otherLen += 50;
-            for (uint8_t i = 0; i < otherLen; i++) {
-                char c = arts[i];
-                hd44780_gotoxy(&lcd, i+2 ,1);
-                if (c == '\0'){
-                    c = ' ';
-                }
+            for (int i = 0; i < 14; i++) {
+                char c = (i < newLen) ? arts[i] : ' ';
                 hd44780_putc(&lcd, c);
             }
         }
