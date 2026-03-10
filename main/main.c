@@ -40,17 +40,20 @@
 /* device name */
 static const char local_device_name[] = "BC SPECIALZ";
 
+/* custom music note and artist characters */
 static const uint8_t char_data[] =
 {
     0x00, 0x04, 0x06, 0x05, 0x05, 0x04, 0x1C, 0x1C,
     0x00, 0x0A, 0x00, 0x0E, 0x0A, 0x0A, 0x0E, 0x00
 };
 
+/* valuable variables */
 char TITLE[128];
 char ARTIST[128];
 
 float SET_VOL;
 
+/* button states */
 typedef enum {INIT, PL_WAIT, NX_WAIT, PR_WAIT,PLAY, NEXT, PREV} State_t;
 
 volatile bool songPlaying = false;
@@ -70,6 +73,7 @@ static void bt_app_dev_cb(esp_bt_dev_cb_event_t event, esp_bt_dev_cb_param_t *pa
 static void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param);
 /* handler for bluetooth stack enabled events */
 static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
+/* helper method to trim array of title and artist with spaces after for scrolling */
 static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc);
 
 /*******************************

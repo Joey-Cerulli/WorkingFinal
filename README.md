@@ -1,82 +1,108 @@
-| Supported Targets | ESP32 |
-| ----------------- | ----- |
+Alex Belliard and Joey Cerulli
+ECE-218 - Embedded Microcontroller Projects
+Instructor: Cherrice Traver
+2/12/26
 
-A2DP-SINK EXAMPLE
-======================
+Project 3 - Windshield Wiper Subsystem
 
-Example of A2DP audio sink role
+System Behavior
 
-This is the example of API implementing Advanced Audio Distribution Profile to receive an audio stream.
 
-This example involves the use of Bluetooth legacy profile A2DP for audio stream reception, AVRCP for media information notifications, and I2S for audio stream output interface.
 
-Applications such as bluetooth speakers can take advantage of this example as a reference of basic functionalities.
+Design Alternatives
 
-## How to use this example
 
-### Hardware Required
-
-To play the sound, there is a need of loudspeaker and possibly an external I2S codec. Otherwise the example will only show a count of audio data packets received silently. Internal DAC can be selected and in this case external I2S codec may not be needed.
-
-For the I2S codec, pick whatever chip or board works for you; this code was written using a PCM5102 chip, but other I2S boards and chips will probably work as well. The default I2S connections are shown below, but these can be changed in menuconfig:
-
-| ESP pin   | I2S signal   |
-| :-------- | :----------- |
-| GPIO22    | LRCK         |
-| GPIO25    | DATA         |
-| GPIO26    | BCK          |
-
-If the internal DAC is selected, analog audio will be available on GPIO25 and GPIO26. The output resolution on these pins will always be limited to 8 bit because of the internal structure of the DACs.
-
-### Configure the project
-
-```
-idf.py menuconfig
-```
-
-* Choose external I2S codec or internal DAC for audio output, and configure the output PINs under A2DP Example Configuration
-
-* For AVRCP CT Cover Art feature, is enabled by default, we can disable it by unselecting menuconfig option `Component config --> Bluetooth --> Bluedroid Options --> Classic Bluetooth --> AVRCP Features --> AVRCP CT Cover Art`. This example will try to use AVRCP CT Cover Art feature, get cover art image and count the image size if peer device support, this can be disable in `A2DP Example Configuration --> Use AVRCP CT Cover Art Feature`.
-
-### Build and Flash
-
-Build the project and flash it to the board, then run monitor tool to view serial output.
-
-```
-idf.py -p PORT flash monitor
-```
-
-(To exit the serial monitor, type ``Ctrl-]``.)
-
-## Example Output
-
-After the program is started, the example starts inquiry scan and page scan, awaiting being discovered and connected. Other bluetooth devices such as smart phones can discover a device named "ESP_SPEAKER". A smartphone or another ESP-IDF example of A2DP source can be used to connect to the local device.
-
-Once A2DP connection is set up, there will be a notification message with the remote device's bluetooth MAC address like the following:
-
-```
-I (106427) BT_AV: A2DP connection state: Connected, [64:a2:f9:69:57:a4]
-```
-
-If a smartphone is used to connect to local device, starting to play music with an APP will result in the transmission of audio stream. The transmitting of audio stream will be visible in the application log including a count of audio data packets, like this:
-
-```
-I (120627) BT_AV: A2DP audio state: Started
-I (122697) BT_AV: Audio packet count 100
-I (124697) BT_AV: Audio packet count 200
-I (126697) BT_AV: Audio packet count 300
-I (128697) BT_AV: Audio packet count 400
-```
-
-The output when receiving a cover art image:
-
-```
-I (53349) RC_CT: AVRC metadata rsp: attribute id 0x80, 1000748
-I (53639) RC_CT: Cover Art Client final data event, image size: 14118 bytes
-```
-
-Also, the sound will be heard if a loudspeaker is connected and possible external I2S codec is correctly configured. For ESP32 A2DP source example, the sound is noise as the audio source generates the samples with a random sequence.
-
-## Troubleshooting
-* For current stage, the supported audio codec in ESP32 A2DP is SBC. SBC data stream is transmitted to A2DP sink and then decoded into PCM samples as output. The PCM data format is normally of 44.1kHz sampling rate, two-channel 16-bit sample stream. Other SBC configurations in ESP32 A2DP sink is supported but need additional modifications of protocol stack settings.
-* As a usage limitation, ESP32 A2DP sink can support at most one connection with remote A2DP source devices. Also, A2DP sink cannot be used together with A2DP source at the same time, but can be used with other profiles such as SPP and HFP.
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                LCD Subsystem                                                     ║
+╠═════════════════════════════════╦══════════════════════════════════════════╦═════════════════════════════════════╣
+║          Specification          ║               Test Process               ║               Results               ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Enable engine start (i.e.,      ║ 4 buttons:                               ║ All tests passed.                   ║
+║ light the green LED) while      ║ DRIVER_OCC                               ║ 1.Green light on                    ║
+║ both seats are occupied         ║ PASS_OCC                                 ║ 2.“Passenger seatbelt not fastened” ║
+║ (DRIVER_OCC, PASS_OCC)          ║ DRIVER_BELT                              ║ 3. All error messages printed.      ║
+║ and seatbelts fastened          ║ PASS_BELT                                ║                                     ║
+║ (DRIVER_BELT, PASS_BELT).       ║ 1. All buttons pressed                   ║                                     ║
+║ Otherwise print appropriate     ║ 2. All but one button (PASS_OCC) pressed ║                                     ║
+║ error messages.                 ║ 3. No buttons pressed                    ║                                     ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Start the engine (i.e., light   ║ All buttons pressed, green               ║ Test passed.                        ║
+║ the yellow LED, turn off Green) ║ LED is on, ignition button               ║ Engine light illuminates and        ║
+║ when ignition is enabled (green ║ pressed                                  ║ stays on after ignition button      ║
+║ LED) and ignition button is     ║                                          ║ is released.                        ║
+║ pressed  (i.e., before the      ║                                          ║                                     ║
+║ button is released).            ║                                          ║                                     ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test ignition turning off       ║ Set all requirements and turn on the     ║ Test passed.                        ║
+║ the car.                        ║ car. Click the ignition button again     ║ When the ignition was pressed       ║
+║                                 ║ and check if the engine light turns off. ║ again, the engine light shuts off.  ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test that engine stays on while ║ Set all requirements and turn on the     ║ Test passed.                        ║
+║ requirements are changed after  ║ car, so that the engine light is         ║ When requirements were altered      ║
+║ the car is already on.          ║ illuminated. Then change some of the     ║ after the engine button was         ║
+║                                 ║ requirements and make sure the engine    ║ already on, the light stayed on.    ║
+║                                 ║ button stays illuminated.                ║                                     ║
+╠═════════════════════════════════╩══════════════════════════════════════════╩═════════════════════════════════════╣
+║                                                Bluetooth subsystem                                               ║
+╠═════════════════════════════════╦══════════════════════════════════════════╦═════════════════════════════════════╣
+║ Only works while the engine     ║ - Turn on car and test that wipers       ║ All tests passed.                   ║
+║ is running.                     ║ are fully functional.                    ║ - When car is on wipers will        ║
+║                                 ║                                          ║ turn on after potentiometer is      ║
+║                                 ║                                          ║ turned.                             ║
+║                                 ║                                          ║                                     ║
+║                                 ║ - Turn car off and make sure wipers      ║ - When the wipers are running and   ║
+║                                 ║ are not able to turn on or change modes. ║ the carturns off, wipers turn off   ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test off                        ║ - When the potentiometer reads the       ║ All tests passed.                   ║
+║                                 ║ correct value, the wipers should not     ║ - When the potentiometer is spun    ║
+║                                 ║ spin                                     ║ the wipers turn off                 ║
+║                                 ║                                          ║                                     ║
+║                                 ║ - When off, Mode will print but interval ║ - When potentiometer is spun the    ║
+║                                 ║ will be empty                            ║ Mode switches to OFF and the        ║
+║                                 ║                                          ║ Interval is empty                   ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test high                       ║ - Turn potentiometer to high and check   ║ All tests passed.                   ║
+║                                 ║ that the wipers run at 25 rpm            ║ - When potentiometer is high the    ║
+║                                 ║                                          ║ wipers run at 25 rpm, or 1.5 degrees║
+║                                 ║                                          ║ per second                          ║
+║                                 ║ - Turn potentiometer to high and check   ║ - When potentiometer is high        ║
+║                                 ║ that the wipers run at a 90 degree angle ║ the wipers go 90 degrees both ways  ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test low                        ║ - Turn potentiometer to low and check    ║ All tests passed.                   ║
+║                                 ║ that the wipers run at 10 rpm.           ║ - When potentiometer is low the     ║
+║                                 ║                                          ║ wipers run at 10 rpm, 1 degree per  ║
+║                                 ║                                          ║ second.                             ║
+║                                 ║ - Turn potentiometer to low and check    ║ - When potentiometer is low         ║
+║                                 ║ that the wipers run at a 90 degree angle ║ the wipers go 90 degrees both ways  ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test interval: short            ║ - Turn potentiometer to interval slow    ║ All tests passed.                   ║
+║                                 ║ mode and check that the interval between ║ - When potentiometer is interval and║
+║                                 ║ wipes is 1 second                        ║ slow mode, the motor waits 1 second ║
+║                                 ║                                          ║ before wiping again                 ║
+║                                 ║ - Turn potentiometer to int. short and   ║ - When potentiometer is int. short  ║
+║                                 ║ check that the wipers run at a 90 degree ║ the wipers go 90 degrees both ways  ║
+║                                 ║ angle.                                   ║                                     ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test interval: med              ║ - Turn potentiometer to interval medium  ║ All tests passed.                   ║
+║                                 ║ mode and check that the interval between ║ - When potentiometer is interval and║
+║                                 ║ wipes is 3 seconds                       ║ med mode, the motor waits 3 seconds ║
+║                                 ║                                          ║ before wiping again                 ║
+║                                 ║ - Turn potentiometer to int. med and     ║ - When potentiometer is int. med the║
+║                                 ║ check that the wipers run at a 90 degree ║ wipers go 90 degrees both ways      ║
+║                                 ║ angle.                                   ║                                     ║
+╠═════════════════════════════════╬══════════════════════════════════════════╬═════════════════════════════════════╣
+║ Test interval: high             ║ - Turn potentiometer to interval high    ║ All tests passed.                   ║
+║                                 ║ mode and check that the interval between ║ - When potentiometer is interval and║
+║                                 ║  wipes is 5 seconds                      ║ high mode, the motor waits 3 seconds║
+║                                 ║                                          ║ before wiping again                 ║
+║                                 ║ - Turn potentiometer to int. high and    ║ - When potentiometer is int. high   ║
+║                                 ║ check that the wipers run at a 90 degree ║ the wipers go 90 degrees both ways  ║
+║                                 ║ angle.                                   ║                                     ║
+╠═════════════════════════════════╩══════════════════════════════════════════╩═════════════════════════════════════╣
+║                                                Buttons subsystem                                                 ║
+╠═════════════════════════════════╦══════════════════════════════════════════╦═════════════════════════════════════╣
+║ Only works while the engine     ║ - Turn on car and test that wipers       ║ All tests passed.                   ║
+╠═════════════════════════════════╩══════════════════════════════════════════╩═════════════════════════════════════╣
+║                                                Bluetooth subsystem                                               ║
+╠═════════════════════════════════╦══════════════════════════════════════════╦═════════════════════════════════════╣
+║ Only works while the engine     ║ - Turn on car and test that wipers       ║ All tests passed.                   ║
