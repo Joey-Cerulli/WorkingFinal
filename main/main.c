@@ -272,8 +272,11 @@ void config(){
 }
 
 static void adcHandler() {
-    int VOL_adc_bits;                      //Variable for wiper interval selector potentiometer input in bits
-    int VOL_mV;                               //Variable for wiper interval selector potentiometer input in mV
+    int VOL_adc_bits;                                   //Variable for wiper interval selector potentiometer input in bits
+    int VOL_mV;                                         //Variable for wiper interval selector potentiometer input in mV
+    float VOL_avg[10] = {0};                             //Variable for tracking past voltage levels
+    int len = sizeof(VOL_avg) / sizeof(VOL_avg[0]);     //Varaible for length of array
+    float avg;                                          //Variable for storing actual average
 
     adc_oneshot_unit_init_cfg_t init_config1 = {
         .unit_id = ADC_UNIT_1,
@@ -299,6 +302,8 @@ static void adcHandler() {
     (&cali_config, &adc1_cali_chan_handle);
 
     while(1) {
+        float tot = 0;
+
         //Read input bits for mode selector
         adc_oneshot_read
         (adc1_handle, VOL, &VOL_adc_bits);
@@ -307,9 +312,21 @@ static void adcHandler() {
         adc_cali_raw_to_voltage
         (adc1_cali_chan_handle, VOL_adc_bits, &VOL_mV);
 
-        SET_VOL = (VOL_mV-142)/31550.0f;
-        printf("%f\n",SET_VOL);
+        for (int i = len; i >= 0; i--) {
+            if (i != 0) {
+                VOL_avg[i] = VOL_avg[i-1];
+            } else {
+                VOL_avg[i] = VOL_mV;
+            }
+        }
 
+        for (int j = 0; j < len; j++) {
+            tot += VOL_avg[j];
+        }
+
+        avg = tot/len;
+
+        SET_VOL = (avg-142)/31550.0f;
         vTaskDelay(20/portTICK_PERIOD_MS);
     }
 }
