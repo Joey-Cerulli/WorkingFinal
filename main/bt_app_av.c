@@ -39,7 +39,9 @@
 /* Application layer causes delay value */
 #define APP_DELAY_VALUE                  50  // 5ms
 
-extern float SET_VOL;
+//Get variables for left and right volume
+extern float SET_LVOL;
+extern float SET_RVOL;
 
 /*******************************
  * STATIC FUNCTION DECLARATIONS
@@ -653,8 +655,10 @@ void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
     int16_t *samples = (int16_t *)data;
     int sample_count = len / 2;
 
-    for (int i = 0; i < sample_count; i++) {
-        samples[i] = samples[i] * SET_VOL;
+    //Scale left and right volumes according to variables
+    for (int i = 0; i < sample_count; i+=2) {
+        samples[i] = samples[i] * SET_LVOL;
+        samples[i+1] = samples[i+1] * SET_RVOL;
     }
 
     write_ringbuf(data, len);

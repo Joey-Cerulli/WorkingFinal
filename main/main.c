@@ -33,7 +33,8 @@
 #define next GPIO_NUM_23           //Next button pin
 #define play GPIO_NUM_22           //Play/Pause button pin
 #define prev GPIO_NUM_21           //Previous button pin 
-#define VOL ADC_CHANNEL_6          //Volume adjusting potentiometer pin
+#define LVOL ADC_CHANNEL_6         //Left ear volume adjusting potentiometer pin
+#define RVOL ADC_CHANNEL_7         //Right ear volume adjusting potentiometer pin
 #define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
 #define BITWIDTH ADC_BITWIDTH_12   //ADC Bitwidth
 
@@ -51,12 +52,14 @@ static const uint8_t char_data[] =
 char TITLE[128];
 char ARTIST[128];
 
-float SET_VOL;
+//Left and right volume variables
+float SET_LVOL;
+float SET_RVOL;
 
 /* button states */
 typedef enum {INIT, PL_WAIT, NX_WAIT, PR_WAIT,PLAY, NEXT, PREV} State_t;
 
-volatile bool songPlaying = false;
+volatile bool songPlaying = false;          //Variable to track if a song is playing or not
 
 /* event for stack up */
 enum {
@@ -79,6 +82,8 @@ static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc);
 /*******************************
  * STATIC FUNCTION DEFINITIONS
  ******************************/
+
+//Function to trim empty characters off the end of the title string
 static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc){
     size_t currLen = strlen(src);
    
@@ -104,11 +109,12 @@ static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc){
     return finalLen;
 }
 
+//Function to get title and artist data into proper variables
 void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
 {
     if (event == ESP_AVRC_CT_METADATA_RSP_EVT) {
 
-        /* --- TITLE --- */
+        //Title
         if (param->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_TITLE) {
 
             const uint8_t *src = param->meta_rsp.attr_text;
@@ -123,7 +129,7 @@ void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
             printf("Title: %s\n", TITLE);
         }
 
-        /* --- ARTIST --- */
+        //Artist
         if (param->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_ARTIST) {
 
             const uint8_t *src = param->meta_rsp.attr_text;
@@ -140,6 +146,7 @@ void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
     }
 }
 
+//Function for LCD processes
 void lcd(void *pvParameters){
     static hd44780_t lcd =
     {
@@ -226,9 +233,7 @@ void lcd(void *pvParameters){
     }
 }
 
-
-
-
+//Function for button processes
 void buttonHandler(){
     State_t state = INIT;
     songPlaying = true;
@@ -266,19 +271,23 @@ void buttonHandler(){
             break;
         case PLAY:
             if (songPlaying){
+                //Pause the song if it's playing
                 esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
             }
             else {
+                //Play the song if it's not playing
                 esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_PRESSED);
             }
             songPlaying = !songPlaying;
             state = INIT;
             break;
         case NEXT:
+            //Skip the song
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             state = INIT;
             break;
         case PREV:
+            //Go to previous song
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             state = INIT;
             break;
@@ -287,15 +296,19 @@ void buttonHandler(){
     }
 }
 
+//Function for configuring pins
 void config(){
+    //Configure previous button
     gpio_reset_pin(prev);
     gpio_set_direction(prev, GPIO_MODE_INPUT);
     gpio_pulldown_en(prev);
     
+    //Congifure play/pause button
     gpio_reset_pin(play);
     gpio_set_direction(play, GPIO_MODE_INPUT);
     gpio_pulldown_en(play);
 
+    //Configure skip button
     gpio_reset_pin(next);
     gpio_set_direction(next, GPIO_MODE_INPUT);
     gpio_pulldown_en(next);
@@ -303,12 +316,43 @@ void config(){
     gpio_pulldown_en(CONFIG_EXAMPLE_I2S_DATA_PIN);
 }
 
+static float average(int len, float values[], int mV) {
+    float avg;                                           //Variable for storing average
+    float tot = 0;                                       //Variable for total of values
+
+    //Shift values down the array
+    for (int i = len; i >= 0; i--) {
+        if (i != 0) {
+            values[i] = values[i-1];
+        } else {
+            values[i] = mV;
+        }
+    }
+
+    //Calculate total mV of the array
+    for (int j = 0; j < len; j++) {
+        tot += values[j];
+    }
+
+    //Caluclate average mV for the array
+    avg = tot/len;
+    return avg;
+}
+
+//Function for reading volume potentiometer
 static void adcHandler() {
-    int VOL_adc_bits;                                   //Variable for wiper interval selector potentiometer input in bits
-    int VOL_mV;                                         //Variable for wiper interval selector potentiometer input in mV
-    float VOL_avg[10] = {0};                             //Variable for tracking past voltage levels
-    int len = sizeof(VOL_avg) / sizeof(VOL_avg[0]);     //Varaible for length of array
-    float avg;                                          //Variable for storing actual average
+    //Left ear variables
+    int LVOL_adc_bits;                                   //Variable for leaft ear volume potentiometer input in bits
+    int LVOL_mV;                                         //Variable for left ear volume potentiometer input in mV
+    float LVOL_avg[10] = {0};                            //Variable for tracking past voltage levels
+    int Llen = sizeof(LVOL_avg) / sizeof(LVOL_avg[0]);   //Varaible for length of array
+
+    //Right ear variables
+    int RVOL_adc_bits;                                   //Variable for right ear volume potentiometer input in bits
+    int RVOL_mV;                                         //Variable for right ear volume potentiometer input in mV
+    float RVOL_avg[10] = {0};                            //Variable for tracking past voltage levels
+    int Rlen = sizeof(LVOL_avg) / sizeof(LVOL_avg[0]);   //Varaible for length of array
+
 
     adc_oneshot_unit_init_cfg_t init_config1 = {
         .unit_id = ADC_UNIT_1,
@@ -316,49 +360,50 @@ static void adcHandler() {
     adc_oneshot_unit_handle_t adc1_handle;              // Unit handle
     adc_oneshot_new_unit(&init_config1, &adc1_handle);  // Populate unit handle
 
-    adc_oneshot_chan_cfg_t config = {
+    adc_oneshot_chan_cfg_t config = {                   // Channel config
         .atten = ADC_ATTEN,
         .bitwidth = BITWIDTH
-    };                                                  // Channel config
-    adc_oneshot_config_channel                          // Configure the potentiometer channel
-    (adc1_handle, VOL, &config);
+    };                                                  
+
+    adc_oneshot_config_channel                          // Configure the left volume potentiometer channel
+    (adc1_handle, LVOL, &config);
+
+    adc_oneshot_config_channel                          // Configure the right volume potentiometer channel
+    (adc1_handle, RVOL, &config);
    
-    adc_cali_line_fitting_config_t cali_config = {     // Configure the potentiometer
+    adc_cali_line_fitting_config_t cali_config = {      // Configure the left volume potentiometer
         .unit_id = ADC_UNIT_1,
         .atten = ADC_ATTEN,
         .bitwidth = BITWIDTH
     };
 
     adc_cali_handle_t adc1_cali_chan_handle;            // Calibration handle
-    adc_cali_create_scheme_line_fitting                // Populate cal handle
+    adc_cali_create_scheme_line_fitting                 // Populate cal handle
     (&cali_config, &adc1_cali_chan_handle);
 
     while(1) {
-        float tot = 0;
-
-        //Read input bits for mode selector
+        //Read input bits for left volume potentiometer
         adc_oneshot_read
-        (adc1_handle, VOL, &VOL_adc_bits);
+        (adc1_handle, LVOL, &LVOL_adc_bits);
     
-        //Convert mode selection bits to mV
+        //Convert left volume bits to mV
         adc_cali_raw_to_voltage
-        (adc1_cali_chan_handle, VOL_adc_bits, &VOL_mV);
+        (adc1_cali_chan_handle, LVOL_adc_bits, &LVOL_mV);
 
-        for (int i = len; i >= 0; i--) {
-            if (i != 0) {
-                VOL_avg[i] = VOL_avg[i-1];
-            } else {
-                VOL_avg[i] = VOL_mV;
-            }
-        }
+        //Set volume variable to a value between 0.0-0.1 according to average mV
+        SET_LVOL = (average(Llen, LVOL_avg, LVOL_mV)-142)/31550.0f;
 
-        for (int j = 0; j < len; j++) {
-            tot += VOL_avg[j];
-        }
 
-        avg = tot/len;
+        //Read input bits for right volume potentiometer
+        adc_oneshot_read
+        (adc1_handle, RVOL, &RVOL_adc_bits);
+    
+        //Convert roght volume bits to mV
+        adc_cali_raw_to_voltage
+        (adc1_cali_chan_handle, RVOL_adc_bits, &RVOL_mV);
 
-        SET_VOL = (avg-142)/31550.0f;
+        //Set volume variable to a value between 0.0-0.1 according to average mV
+        SET_RVOL = (average(Rlen, RVOL_avg, RVOL_mV)-142)/31550.0f;
         vTaskDelay(20/portTICK_PERIOD_MS);
     }
 }
@@ -519,6 +564,7 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 
 void app_main(void)
 {
+    //Configure all pins and create tasks for LCD, buttons, and volume knob
     config();
     xTaskCreate(lcd, "LCDmessages", configMINIMAL_STACK_SIZE * 3, NULL, 3, NULL);
     xTaskCreate(buttonHandler, "ButtonHandler", configMINIMAL_STACK_SIZE * 3, NULL, 4, NULL);
