@@ -165,9 +165,7 @@ void lcd(void *pvParameters){
     hd44780_upload_character(&lcd, 3, char_data);
     hd44780_upload_character(&lcd, 4, char_data + 8);
 
-
     hd44780_clear(&lcd);
-
 
     while (1)
     {
@@ -176,22 +174,52 @@ void lcd(void *pvParameters){
         hd44780_gotoxy(&lcd, 0, 0);
         hd44780_putc(&lcd, 3);
         hd44780_gotoxy(&lcd, 1, 0);
+        hd44780_putc(&lcd, ' ');
+        hd44780_gotoxy(&lcd, 2, 0);
         char titl[128];
         size_t newLen = trimArray(TITLE, titl, sizeof(titl), 5);
-        for (uint8_t i = 0; i < 15; i++) {
-            char c = titl[(pos1 + i) % newLen];
-            hd44780_putc(&lcd, c);
+        if ((newLen - 5) >= 14 ){
+            for (uint8_t i = 0; i < 14; i++) {
+                char c = titl[(pos1 + i) % newLen];
+                hd44780_putc(&lcd, c);
+            }
+        }
+        else{
+            newLen += 50;
+            for (uint8_t i = 0; i < newLen; i++) {
+                char c = titl[i];
+                hd44780_gotoxy(&lcd, i+2 ,0);
+                if (c == '\0'){
+                    c = ' ';
+                }
+                hd44780_putc(&lcd, c);
+            }
         }
         pos1 = (pos1 + 1) % newLen;
            
         hd44780_gotoxy(&lcd, 0, 1);
         hd44780_putc(&lcd, 4);
         hd44780_gotoxy(&lcd, 1, 1);
+        hd44780_putc(&lcd, ' ');
+        hd44780_gotoxy(&lcd, 2, 1);
         char arts[128];
         size_t otherLen = trimArray(ARTIST, arts, sizeof(arts), 5);
-        for (uint8_t i = 0; i < 15; i++) {
-            char c = arts[(pos2 + i) % otherLen];
-            hd44780_putc(&lcd, c);
+        if ((otherLen - 5) >= 14 ){
+            for (uint8_t i = 0; i < 14; i++) {
+                char c = arts[(pos2 + i) % otherLen];
+                hd44780_putc(&lcd, c);
+            }
+        }
+        else{
+            otherLen += 50;
+            for (uint8_t i = 0; i < otherLen; i++) {
+                char c = arts[i];
+                hd44780_gotoxy(&lcd, i+2 ,1);
+                if (c == '\0'){
+                    c = ' ';
+                }
+                hd44780_putc(&lcd, c);
+            }
         }
         pos2 = (pos2 + 1) % otherLen;
         vTaskDelay(pdMS_TO_TICKS(500));

@@ -1,12 +1,14 @@
 Alex Belliard and Joey Cerulli
 ECE-218 - Embedded Microcontroller Projects
 Instructor: Cherrice Traver
-2/12/26
+3/10/26
 
-Project 3 - Windshield Wiper Subsystem
+Final Project - BC Specialz Audio System
 
 System Behavior
-
+Our system, the BC Specialz, feature a pair of headphones that allow you to control volume via a knob, skip, play, pause or 
+reverse your song choice via 3 buttons, and an LCD screen that displays text of the song title and artist that's currently
+playing. The text on the LCD will scroll by if the title or artist is too big to fit on the screen, otherwise it will stay stationary.
 
 
 Design Alternatives
@@ -103,6 +105,6 @@ Design Alternatives
 ╠═════════════════════════════════╦══════════════════════════════════════════╦═════════════════════════════════════╣
 ║ Only works while the engine     ║ - Turn on car and test that wipers       ║ All tests passed.                   ║
 ╠═════════════════════════════════╩══════════════════════════════════════════╩═════════════════════════════════════╣
-║                                                Bluetooth subsystem                                               ║
+║                                                Volume subsystem                                                  ║
 ╠═════════════════════════════════╦══════════════════════════════════════════╦═════════════════════════════════════╣
 ║ Only works while the engine     ║ - Turn on car and test that wipers       ║ All tests passed.                   ║
