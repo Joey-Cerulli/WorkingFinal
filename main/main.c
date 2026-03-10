@@ -30,6 +30,7 @@
 
 #define next GPIO_NUM_22           //Next button pin
 #define play GPIO_NUM_21           //Play/Pause button pin
+#define prev GPIO_NUM_23           //Previous button pin 
 #define leftVol ADC_CHANNEL_4      //Left Volume adjusting potentiometer pin
 #define rightVol ADC_CHANNEL_5     //Right volume adjusting potentiometer pin
 #define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
@@ -44,12 +45,10 @@ static const uint8_t char_data[] =
     0x00, 0x0A, 0x00, 0x0E, 0x0A, 0x0A, 0x0E, 0x00
 };
 
-const char mesg1[] = "hey yall look at me im scrolling wooooooooo look at me go yayyy     ";
-const char mesg2[] = "hey yall its me again look at us yayyyyy yipee wahoooo     ";
 char TITLE[128];
 char ARTIST[128];
 
-typedef enum {INIT, PL_WAIT, NX_WAIT, PLAY, NEXT} State_t;
+typedef enum {INIT, PL_WAIT, NX_WAIT, PR_WAIT,PLAY, NEXT, PREV} State_t;
 
 volatile bool songPlaying = false;
 
@@ -198,19 +197,18 @@ void lcd(void *pvParameters){
 void buttonHandler(){
     State_t state = INIT;
     songPlaying = true;
-    //bool playPressed = false;
-    //bool nextPressed = false;
     for(;;){
         vTaskDelay(10/portTICK_PERIOD_MS);
         switch(state){
         case INIT:
             if (gpio_get_level(play) == 1){
-                //playPressed = true;
                 state = PL_WAIT;
             }
             else if (gpio_get_level(next) == 1){
-                //nextPressed = true;
                 state = NX_WAIT;
+            }
+            else if (gpio_get_level(prev) == 1){
+                state = PR_WAIT;
             }
             else {
                 state = INIT;
@@ -218,16 +216,19 @@ void buttonHandler(){
             break;
         case PL_WAIT:
             if (gpio_get_level(play) == 0){
-                //playPressed = false;
                 state = PLAY;
             }
             break;
         case NX_WAIT:
             if (gpio_get_level(next) == 0){
-                //nextPressed = false;
                 state = NEXT;
             }
-            break; 
+            break;
+        case PR_WAIT:
+            if (gpio_get_level(prev) == 0){
+                state = PREV;
+            }
+            break;
         case PLAY:
             if (songPlaying){
                 esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
@@ -242,12 +243,20 @@ void buttonHandler(){
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             state = INIT;
             break;
+        case PREV:
+            esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
+            state = INIT;
+            break;
         }
 
     }
 }
 
 void config(){
+    gpio_reset_pin(prev);
+    gpio_set_direction(prev, GPIO_MODE_INPUT);
+    gpio_pulldown_en(prev);
+    
     gpio_reset_pin(play);
     gpio_set_direction(play, GPIO_MODE_INPUT);
     gpio_pulldown_en(play);
