@@ -28,8 +28,8 @@
 #include "esp_avrc_api.h"\
 
 
-#define next GPIO_NUM_32           //Next button pin
-#define play GPIO_NUM_13           //Play/Pause button pin
+#define next GPIO_NUM_22           //Next button pin
+#define play GPIO_NUM_21           //Play/Pause button pin
 #define leftVol ADC_CHANNEL_4      //Left Volume adjusting potentiometer pin
 #define rightVol ADC_CHANNEL_5     //Right volume adjusting potentiometer pin
 #define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
@@ -40,12 +40,14 @@ static const char local_device_name[] = "BC SPECIALS";
 
 static const uint8_t char_data[] =
 {
-    0x00, 0x04, 0x06, 0x05, 0x05, 0x0D, 0x1D, 0x00,
+    0x00, 0x04, 0x06, 0x05, 0x05, 0x04, 0x1C, 0x1C,
     0x00, 0x0A, 0x00, 0x0E, 0x0A, 0x0A, 0x0E, 0x00
 };
 
 const char mesg1[] = "hey yall look at me im scrolling wooooooooo look at me go yayyy     ";
 const char mesg2[] = "hey yall its me again look at us yayyyyy yipee wahoooo     ";
+char TITLE[128];
+char ARTIST[128];
 
 typedef enum {INIT, PL_WAIT, NX_WAIT, PLAY, NEXT} State_t;
 
@@ -70,6 +72,41 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 /*******************************
  * STATIC FUNCTION DEFINITIONS
  ******************************/
+void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
+{
+    if (event == ESP_AVRC_CT_METADATA_RSP_EVT) {
+
+        /* --- TITLE --- */
+        if (param->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_TITLE) {
+
+            const uint8_t *src = param->meta_rsp.attr_text;
+            size_t len = param->meta_rsp.attr_length;
+
+            size_t max = sizeof(TITLE) - 1;
+            size_t copy_len = (len < max) ? len : max;
+
+            memcpy(TITLE, src, copy_len);
+            TITLE[copy_len] = '\0';
+
+            printf("Title: %s\n", TITLE);
+        }
+
+        /* --- ARTIST --- */
+        if (param->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_ARTIST) {
+
+            const uint8_t *src = param->meta_rsp.attr_text;
+            size_t len = param->meta_rsp.attr_length;
+
+            size_t max = sizeof(ARTIST) - 1;
+            size_t copy_len = (len < max) ? len : max;
+
+            memcpy(ARTIST, src, copy_len);
+            ARTIST[copy_len] = '\0';
+
+            printf("Artist: %s\n", ARTIST);
+        }
+    }
+}
 
 void lcd(void *pvParameters){
     static hd44780_t lcd =
@@ -113,7 +150,7 @@ void lcd(void *pvParameters){
         hd44780_gotoxy(&lcd, 0, 1);
         hd44780_putc(&lcd, 4);
         hd44780_gotoxy(&lcd, 2, 1);
-        for (uint8_t i = 0; i < 15; i++) {
+        for (uint8_t i = 0; i < 14; i++) {
             char c = mesg2[(pos2 + i) % (sizeof(mesg2) - 1)];
             hd44780_putc(&lcd, c);
         }
@@ -141,15 +178,18 @@ void buttonHandler(){
                 //nextPressed = true;
                 state = NX_WAIT;
             }
+            else {
+                state = INIT;
+            }
             break;
         case PL_WAIT:
-            if (gpio_get_level(play) == 0 ){
+            if (gpio_get_level(play) == 0){
                 //playPressed = false;
                 state = PLAY;
             }
             break;
         case NX_WAIT:
-            if (gpio_get_level(next) == 0 ){
+            if (gpio_get_level(next) == 0){
                 //nextPressed = false;
                 state = NEXT;
             }

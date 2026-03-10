@@ -43,6 +43,9 @@
  * STATIC FUNCTION DECLARATIONS
  ******************************/
 
+extern void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param);
+void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param);
+
 /* allocate new meta buffer */
 static void bt_app_alloc_meta_buffer(esp_avrc_ct_cb_param_t *param);
 /* handler for new track is loaded */
@@ -436,6 +439,7 @@ static void bt_av_hdl_avrc_ct_evt(uint16_t event, void *p_param)
     ESP_LOGD(BT_RC_CT_TAG, "%s event: %d", __func__, event);
 
     esp_avrc_ct_cb_param_t *rc = (esp_avrc_ct_cb_param_t *)(p_param);
+    avrc_ct_cb((esp_avrc_ct_cb_event_t)event, rc);
 
     switch (event) {
     /* when connection state changed, this event comes */
