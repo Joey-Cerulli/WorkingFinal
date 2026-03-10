@@ -68,10 +68,36 @@ static void bt_app_dev_cb(esp_bt_dev_cb_event_t event, esp_bt_dev_cb_param_t *pa
 static void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param);
 /* handler for bluetooth stack enabled events */
 static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
+static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc);
 
 /*******************************
  * STATIC FUNCTION DEFINITIONS
  ******************************/
+static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc){
+    size_t currLen = strlen(src);
+   
+    size_t end = 0;
+    for (size_t i = 0; i < currLen; i++){
+        if (src[i] != '\0'){
+            end = i + 1;
+        }
+    }
+    size_t finalLen = end + spc;
+    if (finalLen >= dstSize){
+        finalLen = dstSize - 1;
+    }
+    memcpy(dst, src, end);
+
+
+    for (size_t i = end; i < finalLen; i++){
+        dst[i] = ' ';
+    }
+
+
+    dst[finalLen] = '\0';
+    return finalLen;
+}
+
 void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
 {
     if (event == ESP_AVRC_CT_METADATA_RSP_EVT) {
@@ -125,6 +151,7 @@ void lcd(void *pvParameters){
         }
     };
 
+
     vTaskDelay(50/portTICK_PERIOD_MS);
     //ESP_ERROR_CHECK(hd44780_init(&lcd));
     hd44780_init(&lcd);
@@ -132,7 +159,9 @@ void lcd(void *pvParameters){
     hd44780_upload_character(&lcd, 3, char_data);
     hd44780_upload_character(&lcd, 4, char_data + 8);
 
+
     hd44780_clear(&lcd);
+
 
     while (1)
     {
@@ -140,24 +169,29 @@ void lcd(void *pvParameters){
         static uint8_t pos2;
         hd44780_gotoxy(&lcd, 0, 0);
         hd44780_putc(&lcd, 3);
-        hd44780_gotoxy(&lcd, 2, 0);
-        for (uint8_t i = 0; i < 14; i++) {
-            char c = mesg1[(pos1 + i) % (sizeof(mesg1) - 1)];
+        hd44780_gotoxy(&lcd, 1, 0);
+        char titl[128];
+        size_t newLen = trimArray(TITLE, titl, sizeof(titl), 5);
+        for (uint8_t i = 0; i < 15; i++) {
+            char c = titl[(pos1 + i) % newLen];
             hd44780_putc(&lcd, c);
         }
-        pos1 = (pos1 + 1) % (sizeof(mesg1) - 1);
+        pos1 = (pos1 + 1) % newLen;
            
         hd44780_gotoxy(&lcd, 0, 1);
         hd44780_putc(&lcd, 4);
-        hd44780_gotoxy(&lcd, 2, 1);
-        for (uint8_t i = 0; i < 14; i++) {
-            char c = mesg2[(pos2 + i) % (sizeof(mesg2) - 1)];
+        hd44780_gotoxy(&lcd, 1, 1);
+        char arts[128];
+        size_t otherLen = trimArray(ARTIST, arts, sizeof(arts), 5);
+        for (uint8_t i = 0; i < 15; i++) {
+            char c = arts[(pos2 + i) % otherLen];
             hd44780_putc(&lcd, c);
         }
-        pos2 = (pos2 + 1) % (sizeof(mesg2) - 1);
-        vTaskDelay(pdMS_TO_TICKS(400));
+        pos2 = (pos2 + 1) % otherLen;
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
+
 
 
 
