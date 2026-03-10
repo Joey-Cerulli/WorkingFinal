@@ -56,7 +56,7 @@ float SET_VOL;
 /* button states */
 typedef enum {INIT, PL_WAIT, NX_WAIT, PR_WAIT,PLAY, NEXT, PREV} State_t;
 
-volatile bool songPlaying = false;
+volatile bool songPlaying = false;          //Variable to track if a song is playing or not
 
 /* event for stack up */
 enum {
@@ -79,6 +79,8 @@ static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc);
 /*******************************
  * STATIC FUNCTION DEFINITIONS
  ******************************/
+
+//Function to trim empty characters off the end of the title string
 static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc){
     size_t currLen = strlen(src);
    
@@ -104,11 +106,12 @@ static size_t trimArray(const char *src, char *dst, size_t dstSize, size_t spc){
     return finalLen;
 }
 
+//Function to get title and artist data into proper variables
 void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
 {
     if (event == ESP_AVRC_CT_METADATA_RSP_EVT) {
 
-        /* --- TITLE --- */
+        //Title
         if (param->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_TITLE) {
 
             const uint8_t *src = param->meta_rsp.attr_text;
@@ -123,7 +126,7 @@ void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
             printf("Title: %s\n", TITLE);
         }
 
-        /* --- ARTIST --- */
+        //Artist
         if (param->meta_rsp.attr_id == ESP_AVRC_MD_ATTR_ARTIST) {
 
             const uint8_t *src = param->meta_rsp.attr_text;
@@ -140,6 +143,7 @@ void avrc_ct_cb(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param)
     }
 }
 
+//Function for LCD processes
 void lcd(void *pvParameters){
     static hd44780_t lcd =
     {
@@ -198,9 +202,7 @@ void lcd(void *pvParameters){
     }
 }
 
-
-
-
+//Function for button processes
 void buttonHandler(){
     State_t state = INIT;
     songPlaying = true;
@@ -238,19 +240,23 @@ void buttonHandler(){
             break;
         case PLAY:
             if (songPlaying){
+                //Pause the song if it's playing
                 esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PAUSE, ESP_AVRC_PT_CMD_STATE_PRESSED);
             }
             else {
+                //Play the song if it's not playing
                 esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_PLAY, ESP_AVRC_PT_CMD_STATE_PRESSED);
             }
             songPlaying = !songPlaying;
             state = INIT;
             break;
         case NEXT:
+            //Skip the song
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_FORWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             state = INIT;
             break;
         case PREV:
+            //Go to previous song
             esp_avrc_ct_send_passthrough_cmd(0, ESP_AVRC_PT_CMD_BACKWARD, ESP_AVRC_PT_CMD_STATE_PRESSED);
             state = INIT;
             break;
@@ -259,15 +265,19 @@ void buttonHandler(){
     }
 }
 
+//Function for configuring pins
 void config(){
+    //Configure previous button
     gpio_reset_pin(prev);
     gpio_set_direction(prev, GPIO_MODE_INPUT);
     gpio_pulldown_en(prev);
     
+    //Congifure play/pause button
     gpio_reset_pin(play);
     gpio_set_direction(play, GPIO_MODE_INPUT);
     gpio_pulldown_en(play);
 
+    //Configure skip button
     gpio_reset_pin(next);
     gpio_set_direction(next, GPIO_MODE_INPUT);
     gpio_pulldown_en(next);
@@ -275,10 +285,11 @@ void config(){
     gpio_pulldown_en(CONFIG_EXAMPLE_I2S_DATA_PIN);
 }
 
+//Function for reading volume potentiometer
 static void adcHandler() {
     int VOL_adc_bits;                                   //Variable for wiper interval selector potentiometer input in bits
     int VOL_mV;                                         //Variable for wiper interval selector potentiometer input in mV
-    float VOL_avg[10] = {0};                             //Variable for tracking past voltage levels
+    float VOL_avg[10] = {0};                            //Variable for tracking past voltage levels
     int len = sizeof(VOL_avg) / sizeof(VOL_avg[0]);     //Varaible for length of array
     float avg;                                          //Variable for storing actual average
 
@@ -295,14 +306,14 @@ static void adcHandler() {
     adc_oneshot_config_channel                          // Configure the potentiometer channel
     (adc1_handle, VOL, &config);
    
-    adc_cali_line_fitting_config_t cali_config = {     // Configure the potentiometer
+    adc_cali_line_fitting_config_t cali_config = {      // Configure the potentiometer
         .unit_id = ADC_UNIT_1,
         .atten = ADC_ATTEN,
         .bitwidth = BITWIDTH
     };
 
     adc_cali_handle_t adc1_cali_chan_handle;            // Calibration handle
-    adc_cali_create_scheme_line_fitting                // Populate cal handle
+    adc_cali_create_scheme_line_fitting                 // Populate cal handle
     (&cali_config, &adc1_cali_chan_handle);
 
     while(1) {
@@ -316,6 +327,7 @@ static void adcHandler() {
         adc_cali_raw_to_voltage
         (adc1_cali_chan_handle, VOL_adc_bits, &VOL_mV);
 
+        //Shift values down the array
         for (int i = len; i >= 0; i--) {
             if (i != 0) {
                 VOL_avg[i] = VOL_avg[i-1];
@@ -324,12 +336,15 @@ static void adcHandler() {
             }
         }
 
+        //Calculate total mV of the array
         for (int j = 0; j < len; j++) {
             tot += VOL_avg[j];
         }
 
+        //Caluclate average mV for the array
         avg = tot/len;
 
+        //Set volume variable to a value between 0.0-0.1 according to average mV
         SET_VOL = (avg-142)/31550.0f;
         vTaskDelay(20/portTICK_PERIOD_MS);
     }
@@ -491,6 +506,7 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 
 void app_main(void)
 {
+    //Configure all pins and create tasks for LCD, buttons, and volume knob
     config();
     xTaskCreate(lcd, "LCDmessages", configMINIMAL_STACK_SIZE * 3, NULL, 3, NULL);
     xTaskCreate(buttonHandler, "ButtonHandler", configMINIMAL_STACK_SIZE * 3, NULL, 4, NULL);
