@@ -39,6 +39,8 @@
 /* Application layer causes delay value */
 #define APP_DELAY_VALUE                  50  // 5ms
 
+extern float SET_VOL;
+
 /*******************************
  * STATIC FUNCTION DECLARATIONS
  ******************************/
@@ -648,6 +650,13 @@ void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 
 void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
 {
+    int16_t *samples = (int16_t *)data;
+    int sample_count = len / 2;
+
+    for (int i = 0; i < sample_count; i++) {
+        samples[i] = samples[i] * SET_VOL;
+    }
+
     write_ringbuf(data, len);
 
     /* log the number every 100 packets */

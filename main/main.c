@@ -17,6 +17,8 @@
 #include "esp_log.h"
 #include "hd44780.h"
 #include <esp_idf_lib_helpers.h>
+#include <sys/time.h>
+#include "esp_adc/adc_oneshot.h"
 
 #include "esp_bt.h"
 #include "bt_app_core.h"
@@ -31,13 +33,12 @@
 #define next GPIO_NUM_23           //Next button pin
 #define play GPIO_NUM_22           //Play/Pause button pin
 #define prev GPIO_NUM_21           //Previous button pin 
-#define leftVol ADC_CHANNEL_4      //Left Volume adjusting potentiometer pin
-#define rightVol ADC_CHANNEL_5     //Right volume adjusting potentiometer pin
+#define VOL ADC_CHANNEL_6          //Volume adjusting potentiometer pin
 #define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
 #define BITWIDTH ADC_BITWIDTH_12   //ADC Bitwidth
 
 /* device name */
-static const char local_device_name[] = "BC SPECIALS";
+static const char local_device_name[] = "BC SPECIALZ";
 
 static const uint8_t char_data[] =
 {
@@ -47,6 +48,8 @@ static const uint8_t char_data[] =
 
 char TITLE[128];
 char ARTIST[128];
+
+float SET_VOL;
 
 typedef enum {INIT, PL_WAIT, NX_WAIT, PR_WAIT,PLAY, NEXT, PREV} State_t;
 
@@ -268,6 +271,49 @@ void config(){
     gpio_pulldown_en(CONFIG_EXAMPLE_I2S_DATA_PIN);
 }
 
+static void adcHandler() {
+    int VOL_adc_bits;                      //Variable for wiper interval selector potentiometer input in bits
+    int VOL_mV;                               //Variable for wiper interval selector potentiometer input in mV
+
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = ADC_UNIT_1,
+    };                                                  // Unit configuration
+    adc_oneshot_unit_handle_t adc1_handle;              // Unit handle
+    adc_oneshot_new_unit(&init_config1, &adc1_handle);  // Populate unit handle
+
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN,
+        .bitwidth = BITWIDTH
+    };                                                  // Channel config
+    adc_oneshot_config_channel                          // Configure the potentiometer channel
+    (adc1_handle, VOL, &config);
+   
+    adc_cali_line_fitting_config_t cali_config = {     // Configure the potentiometer
+        .unit_id = ADC_UNIT_1,
+        .atten = ADC_ATTEN,
+        .bitwidth = BITWIDTH
+    };
+
+    adc_cali_handle_t adc1_cali_chan_handle;            // Calibration handle
+    adc_cali_create_scheme_line_fitting                // Populate cal handle
+    (&cali_config, &adc1_cali_chan_handle);
+
+    while(1) {
+        //Read input bits for mode selector
+        adc_oneshot_read
+        (adc1_handle, VOL, &VOL_adc_bits);
+    
+        //Convert mode selection bits to mV
+        adc_cali_raw_to_voltage
+        (adc1_cali_chan_handle, VOL_adc_bits, &VOL_mV);
+
+        SET_VOL = (VOL_mV-142)/31550.0f;
+        printf("%f\n",SET_VOL);
+
+        vTaskDelay(20/portTICK_PERIOD_MS);
+    }
+}
+
 static char *bda2str(uint8_t * bda, char *str, size_t size)
 {
     if (bda == NULL || str == NULL || size < 18) {
@@ -427,6 +473,7 @@ void app_main(void)
     config();
     xTaskCreate(lcd, "LCDmessages", configMINIMAL_STACK_SIZE * 3, NULL, 3, NULL);
     xTaskCreate(buttonHandler, "ButtonHandler", configMINIMAL_STACK_SIZE * 3, NULL, 4, NULL);
+    xTaskCreate(adcHandler, "ADC_Handler", configMINIMAL_STACK_SIZE * 3, NULL, 4, NULL);
 
     char bda_str[18] = {0};
     /* initialize NVS — it is used to store PHY calibration data */
