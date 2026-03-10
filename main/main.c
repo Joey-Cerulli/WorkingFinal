@@ -28,9 +28,9 @@
 #include "esp_avrc_api.h"\
 
 
-#define next GPIO_NUM_22           //Next button pin
-#define play GPIO_NUM_21           //Play/Pause button pin
-#define prev GPIO_NUM_23           //Previous button pin 
+#define next GPIO_NUM_23           //Next button pin
+#define play GPIO_NUM_22           //Play/Pause button pin
+#define prev GPIO_NUM_21           //Previous button pin 
 #define leftVol ADC_CHANNEL_4      //Left Volume adjusting potentiometer pin
 #define rightVol ADC_CHANNEL_5     //Right volume adjusting potentiometer pin
 #define ADC_ATTEN ADC_ATTEN_DB_12  //ADC Attenuation
