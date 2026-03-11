@@ -6,12 +6,17 @@ Instructor: Cherrice Traver
 Final Project - BC Specialz Audio System
 
 System Behavior
-Our system, the BC Specialz, feature a pair of headphones that allow you to control volume via a knob, skip, play, pause or 
-reverse your song choice via 3 buttons, and an LCD screen that displays text of the song title and artist that's currently
-playing. The text on the LCD will scroll by if the title or artist is too big to fit on the screen, otherwise it will stay stationary.
+Our system, the BC Specialz, feature a pair of headphones that allow you to control the volume of each ear independently
+via a knob, skip, play, pause or reverse your song choice via 3 buttons, and an LCD screen that displays text of the 
+song title and artist that's currently playing. The text on the LCD will scroll by if the title or artist is too big 
+to fit on the screen, otherwise it will stay stationary.
 
 
 Design Alternatives
+Our project was, luckily, able to use most of our original systems in the final design. That is, it connects to devices via bluetooth, plays audio 
+in stereo, and has independently adjustable volume in each ear while displaying the title and artist of the currently playing song. The only system 
+that we had to omit due to pin restriants was the second LCD that would have displayed the volume level of each ear and the playtime of the current 
+song. 
 
 
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
